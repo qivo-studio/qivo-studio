@@ -38,7 +38,7 @@ say "----------------------------"
 say ""
 say "The first administrator"
 ask ADMIN_EMAIL "  Email"
-ask_secret ADMIN_PASSWORD "  Password (at least 12 characters)" 12
+ask_secret ADMIN_PASSWORD "  Password (at least 12 characters, upper and lower case, a digit)" 12
 ask ORGANISATION "  Organisation" "My organisation"
 ask PORT "  Port for the web app" "8000"
 
