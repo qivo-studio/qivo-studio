@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "qivo.fullname" . }}-app
+  labels: {{- include "qivo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels: {{- include "qivo.selector" . | nindent 6 }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels: {{- include "qivo.selector" . | nindent 8 }}
+        app.kubernetes.io/component: app
+      annotations:
+        checksum/env: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: app
+          image: {{ include "qivo.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # the store is migrated on every start (an advisory lock makes concurrent starts safe); until the store
+          # answers (the bundled PostgreSQL starting alongside), retry rather than crash
+          command: ["sh", "-c", "until qivo init-store; do echo waiting for the store; sleep 3; done; exec qivo serve --host 0.0.0.0 --port 8000"]
+          envFrom: [{secretRef: {name: {{ include "qivo.secretName" . }}}}]
+          env:
+            - {name: LINEAGE_WORKERS, value: {{ .Values.app.taskThreads | quote }}}
+          ports: [{containerPort: 8000, name: http}]
+          readinessProbe:
+            httpGet: {path: /api/health, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /api/health, port: http}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 6
+          resources: {{- toYaml .Values.app.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "qivo.fullname" . }}
+  labels: {{- include "qivo.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports: [{port: {{ .Values.service.port }}, targetPort: http, name: http}]
+  selector: {{- include "qivo.selector" . | nindent 4 }}
+    app.kubernetes.io/component: app

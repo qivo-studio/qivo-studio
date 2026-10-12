@@ -1,0 +1,59 @@
+# QiVo Studio Enterprise: the app (API, UI, task threads), extra workers and the PostgreSQL store.
+#   cp .env.example .env    # then set the passwords, the first administrator and your Oracle connection
+#   docker compose up -d    # http://localhost:8000
+# The store is migrated on every start (`qivo init-store`); the first administrator is created once.
+name: qivo
+
+x-app: &app
+  image: ${QIVO_IMAGE:-qivostudio/qivo-studio:latest}
+  env_file: .env
+  volumes:
+    - secrets:/app/.secrets    # the master key for stored connection passwords, shared by app and workers
+  environment:
+    PG_DSN: postgresql://qivo:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/qivo
+    LINEAGE_PLATFORM_ADMINS: ${QIVO_ADMIN_EMAIL:-}
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17
+    shm_size: 256mb            # parallel hash joins on large scans need more than Docker's 64 MB default
+    environment:
+      POSTGRES_USER: qivo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: qivo
+    volumes:
+      - store:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qivo"]
+      interval: 5s
+      retries: 30
+    restart: unless-stopped
+
+  app:
+    <<: *app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${QIVO_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  # Extra workers for long extractions and analyses; the app runs LINEAGE_WORKERS task threads of its own.
+  worker:
+    <<: *app
+    command: ["qivo", "worker"]
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      replicas: ${QIVO_WORKERS:-1}
+
+volumes:
+  store:
+  secrets:

@@ -1,0 +1,12 @@
+QiVo Studio {{ .Chart.AppVersion }} is starting ({{ .Values.app.replicas }} app, {{ .Values.worker.replicas }} worker pods).
+
+{{- if .Values.ingress.enabled }}
+Open https://{{ .Values.ingress.host }}
+{{- else }}
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "qivo.fullname" . }} 8000:{{ .Values.service.port }}
+  then open http://localhost:8000
+{{- end }}
+{{- if .Values.admin.email }}
+Sign in as {{ .Values.admin.email }}.
+{{- end }}
+Check the sandbox, if configured: kubectl exec -n {{ .Release.Namespace }} deploy/{{ include "qivo.fullname" . }}-app -- qivo sandbox-check

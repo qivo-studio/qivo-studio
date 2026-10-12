@@ -1,0 +1,58 @@
+{{- if and .Values.postgres.bundled (not .Values.store.dsn) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "qivo.fullname" . }}-postgres
+  labels: {{- include "qivo.labels" . | nindent 4 }}
+spec:
+  ports: [{port: 5432, targetPort: 5432, name: postgres}]
+  selector: {{- include "qivo.selector" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "qivo.fullname" . }}-postgres
+  labels: {{- include "qivo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  serviceName: {{ include "qivo.fullname" . }}-postgres
+  replicas: 1
+  selector:
+    matchLabels: {{- include "qivo.selector" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels: {{- include "qivo.selector" . | nindent 8 }}
+        app.kubernetes.io/component: postgres
+    spec:
+      securityContext: {fsGroup: 999}
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - {name: POSTGRES_USER, value: qivo}
+            - {name: POSTGRES_DB, value: qivo}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ include "qivo.secretName" . }}, key: POSTGRES_PASSWORD}}
+          ports: [{containerPort: 5432, name: postgres}]
+          readinessProbe:
+            exec: {command: ["pg_isready", "-U", "qivo"]}
+            periodSeconds: 5
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: shm, mountPath: /dev/shm}
+      volumes:
+        - name: shm             # parallel hash joins on large scans need more than the default 64 MB
+          emptyDir: {medium: Memory, sizeLimit: 256Mi}
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- if .Values.postgres.storageClass }}
+        storageClassName: {{ .Values.postgres.storageClass }}
+        {{- end }}
+        resources: {requests: {storage: {{ .Values.postgres.storage }}}}
+{{- end }}

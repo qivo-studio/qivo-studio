@@ -1,0 +1,83 @@
+# QiVo Studio Enterprise. Every setting below is optional except where noted; see README.md at the top of this repository.
+
+image:
+  repository: qivostudio/qivo-studio   # Docker Hub; air-gapped: your registry's copy from the release bundle
+  tag: ""                          # default: the chart's appVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# The address users open (sign-in redirects, cross-site checks). Required for single sign-on.
+publicUrl: ""
+
+# Settings come from one Secret, made by the chart from the values below, or yours (existingSecret: its keys are
+# the environment variables of compose/.env.example, PG_DSN and LINEAGE_MASTER_KEY included).
+existingSecret: ""
+
+app:
+  replicas: 1
+  taskThreads: 2                   # task threads inside each app pod (LINEAGE_WORKERS)
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {memory: 2Gi}
+worker:
+  replicas: 1                      # extra workers for extraction and analysis tasks; 0 = the app pods only
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {memory: 4Gi}
+
+# The first administrator, created on the first start (password at least 12 characters)
+admin:
+  email: ""
+  password: ""
+organisation: "QiVo Studio"
+
+# The store: the chart's own PostgreSQL (bundled) or yours (dsn)
+store:
+  dsn: ""                          # postgresql://user:password@host:5432/db; empty = the bundled one
+postgres:
+  bundled: true
+  image: postgres:17
+  storage: 10Gi
+  storageClass: ""
+  password: ""                     # empty = generated once and kept across upgrades
+
+# The master key for stored connection passwords (a Fernet key); empty = generated once and kept across upgrades.
+# Back it up with the store, or bring it from your key vault through existingSecret.
+masterKey: ""
+
+oracle: {dsn: "", user: "", password: ""}
+sandbox:                           # sandbox/README.md
+  wanted: ""                       # "yes" / "no"; empty = the app asks the first administrator at sign-in
+  pool: ""
+  dsn: ""
+  loaderUser: ""
+  loaderPassword: ""
+  cdbDsn: ""
+  poolUser: ""
+  poolPassword: ""
+  datafiles: ""
+oidc:                              # single sign-on, compose/README.md
+  issuer: ""
+  clientId: ""
+  clientSecret: ""
+  name: ""
+  domains: ""
+  autoCreate: false
+  adminGroup: ""
+metrics:
+  token: ""                        # set to enable /api/metrics (Prometheus, bearer token)
+
+service:
+  type: ClusterIP
+  port: 80
+ingress:
+  enabled: false
+  className: ""
+  host: qivo.example.com
+  tls: []                          # [{secretName: qivo-tls, hosts: [qivo.example.com]}]
+  annotations: {}
+
+podSecurityContext: {runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001}
+nodeSelector: {}
+tolerations: []
+affinity: {}
