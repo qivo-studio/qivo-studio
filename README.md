@@ -125,6 +125,9 @@ scanora export --dsn db:1521/ORCLPDB --user QIVO_READER --schemas ETL,DW -o fina
 qivo import-scan finance.scanora --analyse      # then, wherever QiVo Studio runs
 ```
 
+ParseOra without Python: one program for Linux, macOS or Windows on the
+[releases page](https://github.com/qivo-studio/qivo-studio/releases/tag/parseora-v0.1.5) (checksums in `SHA256SUMS`).
+
 `scanora queries` prints every query ScanOra sends (all SELECT, in a read-only transaction), for your DBA to review.
 No Oracle client is needed for either.
 
