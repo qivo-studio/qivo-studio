@@ -1,8 +1,9 @@
 # QiVo Studio
 
-**Deterministic column-level lineage for Oracle SQL and PL/SQL.** See where every column comes from, what a change
-will hit, and what the code really does, including dynamic SQL. What cannot be decided from the code is reported as a
-gap with its reason; nothing is guessed.
+**Turn your Oracle code base into business knowledge.** QiVo Studio connects jobs, SQL, PL/SQL, variables, tables
+and columns, with their configuration, logs and scripts, into **QiVo MetaGraph**, a code ontology built on
+code, config, logs and scripts. On it: column-level lineage, impact, code-quality rules and answers for Claude, Copilot
+and any MCP client. What cannot be decided from the code is reported as a gap with its reason; nothing is guessed.
 
 [Website](https://qivo.studio) · [Documentation](https://qivo.studio/docs) · [Install guide](https://qivo.studio/docs/install) ·
 [Requirements](https://qivo.studio/docs/requirements) · [Pricing](https://qivo.studio/pricing) ·
